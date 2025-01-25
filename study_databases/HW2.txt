@@ -1,0 +1,122 @@
+--part 1, task 2
+select
+DATEADD(day, 1, EOMONTH(dateId)) as dat, sum(salesRub) as 'Сумма за месяц'
+from distributor.singleSales
+group by EOMONTH(dateId)
+order by EOMONTH(dateId)
+
+--part 1, task 6
+select
+year(dateId) as year, DATEPART(QUARTER, dateId) as quarter, sum(salesRub) as 'Сумма за квартал'
+from distributor.singleSales
+group by year(dateId), DATEPART(QUARTER, dateId)
+order by year(dateId), DATEPART(QUARTER, dateId)
+
+--part 1, task 10
+select
+SUBSTRING(fullname, 1, CHARINDEX(' ',fullname)) as 'Фамилия', SUBSTRING(fullname, CHARINDEX(' ',fullname), len(fullname) - CHARINDEX(' ',fullname)) as 'Имя', SUBSTRING(fullname, 1, CHARINDEX(' ',fullname) + 1) + '.' as 'Фамилия И.'
+from distributor.singleSales
+group by fullname
+
+--part 2, task 4
+select branchName as 'Филиал', DATEADD(day, 1, EOMONTH(dateId)) as 'Дата начала месяца', brand as 'Бренд', sum(salesRub) as 'Выручка компании'
+from (select distinct dateId, salesRub, b.branchName, c.brand from distributor.sales as a
+left join distributor.branch as b
+on a.branchId = b.branchId
+left join distributor.item as c
+on a.itemId = c.itemId
+where c.brand is not null and a.branchId is not null) as d
+group by branchName, EOMONTH(dateId), brand
+order by branchName, EOMONTH(dateId), brand
+
+-- part 2, task 8
+select year(dateId) as 'Год', fullname as 'Менеджер', count(distinct companyId) as 'Количество компаний'
+from (select dateId, b.fullname, companyId from distributor.sales as a
+inner join distributor.salesManager as b
+on a.salesManagerId = b.salesManagerId
+WHERE b.fullname is not null and companyId is not null) as d
+group by year(dateId), fullname
+order by year(dateId)
+
+-- part 2, task 12
+select *, not_liqv/all_sum as partitionn
+from (select sum(remain) as not_liqv
+from (SELECT *, ROW_NUMBER() over(PARTITION by itemId order by dat) as n
+    from (select itemId, EOMONTH(dateId) as dat, sum(remains) as remain, sum(freeRemains) as free_remain 
+        from distributor.remains
+        where itemId is not null
+        group by itemId, EOMONTH(dateId)) as a
+    where free_remain = 0 and remain != 0) as b
+where n >=6) as c
+left join (
+    select sum(remains) as all_sum
+    from distributor.remains) as d
+on c.not_liqv is not null
+
+--part 2, task 16
+select brand, y, m, summ/all_sum as partitionn
+from (
+    SELECT brand, y, m, summ, SUM(summ) over(partition by y, m) as all_sum, ROW_NUMBER() over(partition by y, m order by y, m asc, summ desc) as n
+    from (
+        select distinct brand, year(dateId) as y, MONTH(dateId) as m, sum(salesRub) as summ from distributor.sales as a
+        left join distributor.item as b
+        on a.itemId = b.itemId
+        where brand is not null and a.itemId is not null
+        group by brand, year(dateId), MONTH(dateId)) as c) as f
+WHERE n < 4
+
+--part 2, task 20
+
+declare @vdate datetime
+set @vdate = '12/01/15'
+
+select fullname, dat, avg(summ) as 'Средний чек'
+from(
+    select avg(salesManagerId) as salesManagerid, DATEADD(day, 1, EOMONTH(dateId)) as dat, sum(salesRub) as summ
+    from distributor.sales
+    group by EOMONTH(dateId), checkId
+    ) as a
+inner join distributor.salesManager as b
+on a.salesManagerid = b.salesManagerId
+where dat = dateadd(month, -1, @vdate) or dat = dateadd(month, -2, @vdate) or dat = dateadd(month, -3, @vdate)
+group by dat, fullname
+
+-- part 2, task 24
+select branchName, yearId, monthId, sum(sum_in_rubles) as cost
+from (select branchId, yearId, monthId, sum_in_rubles =
+    CASE b.currencyPurchase
+        WHEN null then DDP * remains 
+        else (DDP * value) * remains
+    end
+from distributor.remains as a
+inner join distributor.ddp as b
+on a.itemId = b.itemId and year(a.dateId) = b.yearId and month(a.dateId) = b.monthId
+left join distributor.currency as c
+on a.dateId = c.dateId and c.currency = 
+CASE trim(b.currencyPurchase)
+    WHEN 'EUR' then 'EUR'
+    WHEN 'EURO' then 'EUR'
+    WHEN 'GBP' then 'GBP'
+    WHEN 'GPB' then 'GBP'
+    WHEN 'USD' then 'USD'
+    WHEN 'RUR' then 'EUR'
+end) as answer
+left join distributor.branch as d
+on answer.branchId = d.branchId
+group by branchName, yearId, monthId
+order by branchName, yearId, monthId
+
+
+-- part 2, task 27
+select dat, exlusive_sum/summ as exclusive_part_in_sales
+from (select DATEADD(day, 1, EOMONTH(dateId)) as dat, sum(salesRub) as summ 
+from distributor.sales
+group by EOMONTH(dateId)) as summa
+inner join (select DATEADD(day, 1, EOMONTH(dateId)) as dat2, sum(salesRub) as exlusive_sum 
+from distributor.sales as a
+inner join distributor.item as b
+on a.itemId = b.itemId
+where exclusive = 'Да'
+group by EOMONTH(dateId)) as exlus
+on summa.dat = exlus.dat2
+order by dat
