@@ -1,0 +1,68 @@
+from aiogram import Bot, types
+from aiogram.dispatcher import Dispatcher
+from aiogram.utils import executor
+from google_images_search import GoogleImagesSearch
+
+TOKEN = '2111438018:AAH2OyrrT1urENKzSiKAfZB6dh1vsJZkbH0'
+PROXY_URL = 'socks5://204.101.61.81' # вставить здесь подходящий ip
+GCS_DEVELOPER_KEY= 'AIzaSyANRxDnOqNQX0vr0dvFlN2je9HozcsN9XU'
+GCS_CX = '8cb313822a4172b0b'
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+gis = GoogleImagesSearch(GCS_DEVELOPER_KEY, GCS_CX)
+
+_search_params = {
+    'q': 'dog',
+    'num': 1,
+    'safe': 'off',
+    'fileType': 'jpg',
+    'imgType': 'photo',
+    'imgSize': 'MEDIUM',
+    'imgDominantColor': 'black',
+    'imgColorType': 'color',
+    'rights': 'cc_publicdomain'
+}
+
+@dp.message_handler(commands=['start'])
+async def process_start_command(message: types.Message):
+    await message.reply('Привет!\nИспользуй /help, '
+                        'чтобы узнать список доступных команд!')
+
+
+@dp.message_handler(commands=['help'])
+async def process_help_command(message: types.Message):
+    msg = 'Я могу ответить на следующие команды:' + '\n' + '/photo'
+    await message.reply(msg)
+
+
+#@dp.message_handler(commands=['photo'])
+#async def search_photo_command(message: types.Message):
+#    await bot.send_message(message.from_user.id, "Что ты хочешь найти?")
+#    bot.register_next_step_handler(send, photo)
+#    log(message)
+
+#async def photo(message: types.Message):
+#    await bot.send_message(message.chat.id, 'Ищу картинку по запросу: {photo}'.format(photo=message.text))
+#    caption = "Вот что я нашёл!"
+#    gis.search(search_params=_search_params)
+#    for image in gis.results():
+#        await bot.send_photo(message.from_user.id, image,
+#                         caption,
+#                         reply_to_message_id=message.message_id)
+# НЕ РАБОТАЕТ КОМАНДА bot.register_next_step_handler
+
+
+
+@dp.message_handler()
+async def photo(message: types.Message):
+    await bot.send_message(message.chat.id, 'Ищу картинку по запросу: {photo}'.format(photo=message.text))
+    caption = "Вот что я нашёл!"
+    _search_params['q'] = message.text
+    gis.search(search_params=_search_params)
+    for image in gis.results():
+        await bot.send_photo(message.from_user.id, image)
+
+
+if __name__ == '__main__':
+    executor.start_polling(dp)

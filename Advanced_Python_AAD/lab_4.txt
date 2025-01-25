@@ -1,0 +1,104 @@
+import sys
+import argparse
+
+def createParser ():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n')
+    parser.add_argument('name', nargs='?')
+    return parser
+
+def Fibnum(n):
+    if n == 0 or n == 1:
+        print(n)
+    else:
+        arr = [0, 1]
+        for i in range(2, n):
+            arr.append(arr[i - 1] + arr[i - 2])
+    print("Искомое число: ", arr[n - 1])
+
+if __name__ == '__main__':
+    parser = createParser()
+    namespace = parser.parse_args(sys.argv[1:])
+    if namespace.n:
+        Fibnum(namespace.n)
+    if namespace.name:
+        Fibnum(namespace.name)
+
+
+--------------------------------------------------------------------
+
+
+def dekor(func):
+    def wrapper(arr):
+        count = func(arr)
+        if count == 0:
+            print('Нет(')
+        elif count > 10:
+            print('Очень много')
+        else:
+            print(count)
+    return wrapper
+@dekor
+def chet(arr):
+    count = 0
+    for el in arr:
+        if el % 2 == 0:
+            count += 1
+    return count
+
+
+arr = list(range(22))
+chet(arr)
+
+------------------------------------------------------------------------
+
+def swap(func):
+    def wrapper(*args, **kwargs):
+        arr = args[::-1]
+        func(*arr, **kwargs)
+    return wrapper
+
+@swap
+def div(x, y, show=False):
+    res = x / y
+    if show:
+        print(res)
+    return res
+
+div(2, 4, show=True)
+
+------------------------------------------------------------------
+
+import time
+from functools import wraps
+
+def big_dekor(path):
+        def dekor(func):
+            @wraps(func)
+            def wrapler(*args, **kwargs):
+                with open(path, 'w') as out:
+                    out.write(time.ctime() + '\n')
+                    out.write(str(*args) + '\n')
+                    time.clock()
+                    retyrn = func(*args, **kwargs)
+                    if retyrn == None:
+                        retyrn = '-'
+                    out.write(str(retyrn) + '\n')
+                    out.write(time.ctime() + '\n')
+                    out.write(str(time.clock()) + '\n')
+            return wrapler
+        return dekor
+
+@big_dekor('F:\\ans.txt')
+def chet(arr):
+    count = 0
+    for el in arr:
+        if el % 2 == 0:
+            count += 1
+    return count
+
+
+arr = list(range(22))
+chet(arr)
+print(chet.__name__)
+
